@@ -37,6 +37,8 @@ struct ls
 {
     char*  path;
     size_t path_size;
+    char*  rec_buf;
+    size_t rec_size;
     char*  link;
     size_t len;
     char*  datestr;
@@ -58,13 +60,16 @@ void recurceLs(char* dirName, char* path);
 char* catPath(char* buff, char* dirName, char* path);
 struct ls* lsInit();
 void lsClear();
+void cutStr(char*);
 
 
 int main(int argc, char* argv[])
 {
     progname = argv[0];
     parseFlags(argc, argv);
+
     pls = lsInit();
+
     if (argc == optind)
         Ls(".");
     else
@@ -75,18 +80,28 @@ int main(int argc, char* argv[])
 
     lsClear();
 
-    return 0;
+   return 0;
 }
 
 
 struct ls* lsInit()
 {
     struct ls* ins = (struct ls*) malloc(sizeof(struct ls));
+
     ins->path = (char*) malloc(BUF_SIZE);
     ins->path_size = BUF_SIZE;
     ins->path[BUF_SIZE - 1] = '\0';
+    ins->path[0] = '\0';
+
+    ins->rec_buf = (char*) malloc(BUF_SIZE);
+    ins->rec_size = BUF_SIZE;
+    ins->rec_buf[BUF_SIZE - 1] = '\0';
+    ins->rec_buf[0] = '\0';
+
     ins->link = (char*) malloc(BUF_SIZE);
     ins->link[BUF_SIZE - 1] = '\0';
+    ins->link[0] = '\0';
+
     ins->datestr = (char*) malloc(BUF_SIZE);
     ins->datestr[BUF_SIZE - 1] = '\0';
     ins->modestr = (char*) malloc(MODE_SIZE);
@@ -99,6 +114,8 @@ void lsClear()
 {
     if (pls->path)
         free(pls->path);
+    if (pls->rec_buf)
+        free(pls->rec_buf);
     if (pls->link)
         free(pls->link);
     if (pls->datestr)
@@ -113,7 +130,6 @@ void lsClear()
 void Ls(char* path)
 {
     assert(path);
-
 
     if (lstat(path, &(pls->st)))
     {
@@ -189,7 +205,7 @@ void Ls(char* path)
 void printLong(char* dirName, char* path)
 {
     assert(path);
-
+    
     if (!dirName)
         pls->path = path;
     else
@@ -197,8 +213,8 @@ void printLong(char* dirName, char* path)
         pls->len = strlen(dirName) + strlen(path) + 2;
         if (pls->len > pls->path_size)
         {    
-             pls->path = (char*) realloc(pls->path, pls->len);
-             pls->path_size = pls->len;
+             pls->path = (char*) realloc(pls->path, pls->len * 2);
+             pls->path_size = pls->len * 2;
              pls->path[pls->len - 1] = '\0';
         }
         catPath(pls->path, dirName, path);
@@ -312,22 +328,26 @@ void recurceLs(char* dirName, char* path)
     assert(path);
 
     pls->len = strlen(dirName) + strlen(path) + 2;
-    char* rec_buf = (char*) malloc(pls->len);
-    rec_buf[pls->len - 1] = '\0';
-    catPath(rec_buf, dirName, path);
-
-    if (lstat(rec_buf, &(pls->st)))
+    if (pls->len > pls->rec_size)
     {
-        fprintf(stderr, "%s: unable to access '%s': %s\n", progname, rec_buf, strerror(errno));
+        pls->rec_buf = (char*) realloc(pls->rec_buf, pls->len * 2);
+        pls->rec_buf[pls->len - 1] = '\0';
+        pls->rec_size = pls->len * 2;
+    }
+    catPath(pls->rec_buf, dirName, path);
+
+    if (lstat(pls->rec_buf, &(pls->st)))
+    {
+        fprintf(stderr, "%s: unable to access '%s': %s\n", progname, pls->rec_buf, strerror(errno));
         return;
     }
 
     if (S_ISDIR(pls->st.st_mode) && flag.R)
     {
         printf("\n");
-        Ls(rec_buf);
+        Ls(pls->rec_buf);
     }
-    free(rec_buf);
+    cutStr(pls->rec_buf);
 }
 
 void printShort(char* dirName, char* path)
@@ -335,9 +355,9 @@ void printShort(char* dirName, char* path)
     pls->len = strlen(dirName) + strlen(path) + 2;
     if (pls->len > pls->path_size)
     {
-        pls->path = (char*) realloc(pls->path, pls->len);
+        pls->path = (char*) realloc(pls->path, pls->len * 2);
         pls->path[pls->len - 1] = '\0';
-        pls->path_size = pls->len;
+        pls->path_size = pls->len * 2;
     }
     catPath(pls->path, dirName, path);
 
@@ -382,20 +402,28 @@ char* catPath(char* buff, char* dirName, char* path)
     assert(dirName);
     assert(path);
     
-    //printf("cat1: dir: %s, path: %s, buff: %s\n", dirName, path, buff);
     if (strcmp(buff, dirName))
     {
         buff[0] = '\0';
-        //printf("cat0: dir: %s, path: %s, buff: %s\n", dirName, path, buff);
         strcat(buff, dirName);
     }
-    //printf("cat2: buf: %s\n", buff);
     strcat(buff, "/");
-    //printf("cat3: buf: %s\n", buff);
     strcat(buff, path);
-    //printf("cat4: buf: %s\n", buff);
     
     return buff;
+}
+
+void cutStr(char* str)
+{
+    assert(str);
+
+    pls->len = strlen(str);
+    char* tmp = str + pls->len - 1;
+    while(*tmp != '/' && tmp != str)
+        tmp--;
+    
+    if (*tmp == '/')
+        *tmp = '\0';
 }
 
 void parseFlags(int argc, char* argv[])
