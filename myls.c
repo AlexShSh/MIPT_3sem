@@ -152,6 +152,7 @@ void Ls(char* path)
         }
 
         struct dirent* dir = NULL;
+
         while ((dir = readdir(d)))
         {
             if (dir->d_name[0] != '.' || flag.a)

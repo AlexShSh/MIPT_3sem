@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
         }
 
         execute(buf, strToTokens(line, buf));
-     }		
+     }
 
     free(line);
     clearBuf(buf);
@@ -89,7 +89,7 @@ void execute(char*** buf, const int size)
         {
             if (i != 0)
                 close(pfd[prev][0]);
-            if (i != size - 1)	
+            if (i != size - 1)
                 close(pfd[next][1]);
         }
     }  
@@ -110,7 +110,7 @@ int strToTokens(char* str, char*** buf)
     for (int i = 0; i < COMMAND_NUM; i++)
     {
         buf[i][0] = strtok(buf[i][0], delim2);
-        for (int j = 1; (buf[i][j] = strtok(NULL, delim2)) && j < ARG_NUM; j++);
+        for (int j = 1; (buf[i][j] = strtok(NULL, delim2)) && j < ARG_NUM - 1; j++);
     }
     
     int realSize = 0;
