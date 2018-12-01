@@ -60,6 +60,8 @@ int main(int argc, char* argv[])
     }
 
     wpid = getpid();
+    error_check("getpid", wpid);
+
     rpid = fork();
     error_check("fork", rpid);
 
@@ -68,7 +70,6 @@ int main(int argc, char* argv[])
     else
         writer();
 
-    wait(NULL);
     wait(NULL);
 
     return 0;
@@ -80,13 +81,12 @@ void writer()
     init_writer();
     int res = -1;
     char byte = -1;
+
     while ((byte = recv_byte()) != EOF)
     {
         res = write(STDOUT_FILENO, &byte, 1);
         error_check("write", res);
     }
-
-    exit(EXIT_SUCCESS);
 }
 
 
